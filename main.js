@@ -74,6 +74,7 @@ app.get("/home",(req,res) => {
         {
             console.log(err)
         }
+        // creating a cart
         else{
             if(!req.session.cart)
             {
@@ -92,9 +93,9 @@ app.get('/get/clear_cart',(req,res)=>{
 
 //generate the total bill
 app.get('/get/total_bill',(req,res)=>{
-    
     if(req.session.cart){
         req.session.bill=[]
+        let Total_Price = 0 ;
         for(let i = 0 ; i<req.session.cart.length ; i++)
         {
             let tax_charged = 200 ;
@@ -114,15 +115,44 @@ app.get('/get/total_bill',(req,res)=>{
                 Type : "Product" ,
                 Tax : tax_charged , 
                 Quantity : cart_detail.quantity ,
-                Total_Price : cart_detail.quantity * (cart_detail.product_price+tax_charged)
+                Total_Price_Item : cart_detail.quantity * (cart_detail.product_price+tax_charged)
             };
+            Total_Price += cart_detail.quantity * (cart_detail.product_price+tax_charged)
             req.session.bill.push(bill_data);
         }
-        
-
+        const total_amount = {
+            Total_Amount : Total_Price 
+        }
+        req.session.bill.push(total_amount);
+        res.send(JSON.parse(JSON.stringify(req.session.bill))) ;
     }
+
     else {
         res.send("Error 42 : No values added to Cart") ;
+        res.redirect("/home") ;
+    }
+})
+
+//confirm the bill 
+app.get('/get/confirm_order',(req,res)=>{
+    if(req.session.bill){
+        let dateObject = new Date();
+        for(let i = 0 ; i<req.session.bill.length-1 ; i++){
+            let bill_detail = req.session.bill[i];
+            con.query('insert into orders values(?,?,?,?,?,?,?,?)',[bill_detail.Id,bill_detail.Name,bill_detail.Price,bill_detail.Type,bill_detail.Tax,bill_detail.Quantity,bill_detail.Total_Price_Item,dateObject],(err,result)=>{
+                if(err)
+                {
+                    console.log(err)
+                }else {
+                    res.send("Success!! Bill confirmed and updated ") ;
+                }
+                
+            })       
+        }
+        req.session.bill=[] 
+    }
+    else{
+        res.redirect("/get/total_bill")
     }
 })
 
