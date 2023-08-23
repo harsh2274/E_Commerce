@@ -84,6 +84,48 @@ app.get("/home",(req,res) => {
     });
 })
 
+// clear items from the cart 
+app.get('/get/clear_cart',(req,res)=>{
+    req.session.cart = [] ;
+    res.redirect("/home");
+})
+
+//generate the total bill
+app.get('/get/total_bill',(req,res)=>{
+    
+    if(req.session.cart){
+        req.session.bill=[]
+        for(let i = 0 ; i<req.session.cart.length ; i++)
+        {
+            let tax_charged = 200 ;
+            let cart_detail = req.session.cart[i] ;
+
+            if(cart_detail.product_price > 1000 && cart_detail.product_price<=5000 ){
+                tax_charged = cart_detail.product_price * (0.12);
+            }
+            else if (cart_detail.product_price > 5000 ){
+                tax_charged = cart_detail.product_price * (0.18);
+            };   
+
+            let bill_data = {
+                Id : cart_detail.product_id ,
+                Name : cart_detail.product_name ,
+                Price : parseFloat(cart_detail.product_price) ,
+                Type : "Product" ,
+                Tax : tax_charged , 
+                Quantity : cart_detail.quantity ,
+                Total_Price : cart_detail.quantity * (cart_detail.product_price+tax_charged)
+            };
+            req.session.bill.push(bill_data);
+        }
+        
+
+    }
+    else {
+        res.send("Error 42 : No values added to Cart") ;
+    }
+})
+
 // add items to the cart
 app.post('/post/add_cart',(req,res)=>{
     const product_id = (req.body.product_id).toLowerCase() ;
@@ -102,19 +144,10 @@ app.post('/post/add_cart',(req,res)=>{
 
     if(count === 0)
     {
-        let prod_price =  parseFloat(product_price) ;
-        let tax_charged = 200 ;
-        if(prod_price > 1000 && product_price<=5000 ){
-            tax_charged = prod_price * (0.12);
-        }
-        else if (prod_price > 5000 ){
-            tax_charged = prod_price * (0.18);
-        }
         const cart_data = {
             product_id : product_id,
             product_name : product_name,
             product_price : parseFloat(product_price),
-            product_tax : tax_charged,
             quantity : 1
         };
         req.session.cart.push(cart_data);
