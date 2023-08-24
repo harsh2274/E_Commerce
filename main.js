@@ -1,5 +1,4 @@
-//-->dont access the pssword directly 
-
+// importing all the necessary libraries
 const express = require("express")
 const mysql = require("mysql")
 const app = express()
@@ -34,7 +33,7 @@ schema
 .has().uppercase()                              // Must have uppercase letters
 .has().lowercase()                              // Must have lowercase letters
 .has().digits(1)                                // Must have at least 1 digits
-.is().not().oneOf(['Passw0rd', 'Password123','Password']);
+.is().not().oneOf(['Passw0rd', 'Password123']);
 
 // establishing a conenction with mysql
 //-->dont access the pssword directly 
@@ -43,7 +42,7 @@ const con = mysql.createConnection({
     host:'localhost',
     user:'root',
     password :"855fc1@NOV25",
-    database : "try"
+    database : "plotly_task"
 })
 
 // checking is the connection is successful
@@ -64,19 +63,20 @@ app.use(session({
     cookie : {secure : false}
 })) 
 
-// create a route to load the products
+// create a route to load the products and also creating a new cart if it does not exist 
 app.get("/home",(req,res) => {
-    con.query('select * from current_status_products',(err,result,fields)=>{
+    con.query('select * from items_status',(err,result,fields)=>{
         if(err)
         {
             console.log(err)
         }
-        // creating a cart
+        // creating a new cart if does not exist
         else{
             if(!req.session.cart)
             {
                 req.session.cart = [] ;
             }
+            // listing all the available products and services
             res.send(JSON.parse(JSON.stringify(result))) ;
         }
     });
@@ -91,33 +91,76 @@ app.get('/get/clear_cart',(req,res)=>{
 
 //generate the total bill
 app.get('/get/total_bill',(req,res)=>{
+
+    //checking if the session cart exists or not
     if(req.session.cart){
+        // creatingg a new session for billing
         req.session.bill=[]
         let Total_Price = 0 ;
         for(let i = 0 ; i<req.session.cart.length ; i++)
         {
-            let tax_charged = 200 ;
+            // initializing all the values
+            let tax_charged = 0 ;
+            let bill_data ;
             let cart_detail = req.session.cart[i] ;
 
-            if(cart_detail.product_price > 1000 && cart_detail.product_price<=5000 ){
-                tax_charged = cart_detail.product_price * (0.12);
-            }
-            else if (cart_detail.product_price > 5000 ){
-                tax_charged = cart_detail.product_price * (0.18);
-            };   
+            //calculation of taxes for product
+            if(cart_detail.Item_Type ===  "product"){
+                // base tax for product
+                tax_charged = 200 ;
 
-            let bill_data = {
-                Id : cart_detail.product_id ,
-                Name : cart_detail.product_name ,
-                Price : parseFloat(cart_detail.product_price) ,
-                Type : "Product" ,
-                Tax : tax_charged , 
-                Quantity : cart_detail.quantity ,
-                Total_Price_Item : cart_detail.quantity * (cart_detail.product_price+tax_charged)
-            };
-            Total_Price += cart_detail.quantity * (cart_detail.product_price+tax_charged)
+                // charging the taxes according to the condition
+                if(cart_detail.Item_Cost > 1000 && cart_detail.Item_Cost<=5000 ){
+                    tax_charged = cart_detail.Item_Cost * (0.12);
+                }
+                else if (cart_detail.Item_Cost > 5000 ){
+                    tax_charged = cart_detail.Item_Cost * (0.18);
+                };  
+
+                // creating a template for storing the bill data 
+                bill_data = {
+                    Id : cart_detail.Item_id ,
+                    Name : cart_detail.Item_Name ,
+                    Price : parseFloat(cart_detail.Item_Cost) ,
+                    Type : "product" ,
+                    Tax : tax_charged , 
+                    Quantity : cart_detail.quantity ,
+                    Total_Price_Item : cart_detail.quantity * (cart_detail.Item_Cost+tax_charged)
+                };
+            }
+
+            //calculation of taxes for service 
+            else {
+                // base tax for service
+                tax_charged = 100 ;
+
+                // charging the taxes according to the condition
+                if(cart_detail.Item_Cost > 1000 && cart_detail.Item_Cost<=8000 ){
+                    tax_charged = cart_detail.Item_Cost * (0.10);
+                }
+                else if (cart_detail.Item_Cost > 8000 ){
+                    tax_charged = cart_detail.Item_Cost * (0.15);
+                };   
+
+                // creating a template for storing the bill data 
+                bill_data = {
+                    Id : cart_detail.Item_id ,
+                    Name : cart_detail.Item_Name ,
+                    Price : parseFloat(cart_detail.Item_Cost) ,
+                    Type : "service" ,
+                    Tax : tax_charged , 
+                    Quantity : cart_detail.quantity ,
+                    Total_Price_Item : cart_detail.quantity * (cart_detail.Item_Cost+tax_charged)
+                };
+            }   
+            
+            // calculating the total price
+            Total_Price += cart_detail.quantity * (cart_detail.Item_Cost+tax_charged) ;
+            
+            // adding each items billing data to the bill session
             req.session.bill.push(bill_data);
         }
+
         const total_amount = {
             Total_Amount : Total_Price 
         }
@@ -125,11 +168,13 @@ app.get('/get/total_bill',(req,res)=>{
         res.send(JSON.parse(JSON.stringify(req.session.bill))) ;
     }
 
+    // if the cart has not been created yet
     else {
-        res.send("Error 42 : No values added to Cart") ;
+        res.send("Error 401 : No values added to Cart") ;
         res.redirect("/home") ;
     }
 })
+
 
 //confirm the bill 
 app.get('/get/confirm_order',(req,res)=>{
@@ -156,9 +201,6 @@ app.get('/get/confirm_order',(req,res)=>{
     }
 })
 
-app.get('/get/confirm_bill',(req,res)=>{
-    res.send("Success!! Bill confirmed and updated ") ;
-})
 
 // add items to the cart
 app.post('/post/add_cart',(req,res)=>{

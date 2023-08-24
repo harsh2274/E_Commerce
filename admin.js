@@ -1,4 +1,4 @@
-//-->dont access the pssword directly 
+// calling the required libraries
 const express = require("express")
 
 const mysql = require("mysql")
@@ -24,7 +24,7 @@ const con = mysql.createConnection({
     host:'localhost',
     user:'root',
     password :"855fc1@NOV25",
-    database : "try"
+    database : "plotly_task"
 })
 
 // checking is the connection is successful
@@ -52,21 +52,11 @@ app.post('/post/new_item',(req,res)=>{
     // requesting of items from the rest API
     const Item_ID = (req.body.item_id).toLowerCase() 
     const Item_Name = (req.body.item_name).toLowerCase() 
-    const Item_Type = (req.body.item_type).toLowerCase()
+    let Item_Type = (req.body.item_type).toLowerCase()
     const Item_Barcode = req.body.item_barcode
-    const Item_Availability = (req.body.item_availability).toLowerCase()
-    const Item_Cost = req.body.item_cost
+    let Item_Availability = (req.body.item_availability).toLowerCase()
+    let Item_Cost = req.body.item_cost
     const Item_Description = req.body.item_description
-
-    // every item must have a ID
-    if(Item_ID==""){
-        res.send("Error 200 : Please specify a unique item_id")
-    }
-
-    //every item must have a name
-    if(Item_Name==""){
-        res.send("Error 201 : Please specify a unique item_name")
-    }
 
     //if cost is not specified by default it will be made as zero
     if(Item_Cost==""){
@@ -82,75 +72,86 @@ app.post('/post/new_item',(req,res)=>{
     if(Item_Availability==""){
         Item_Availability = "no"
     }
+ 
+    // every item must have a ID
+    if(Item_ID==""){
+        res.send("Error 200 : Please specify a unique item_id")
+    }
+
+    //every item must have a name
+    else if(Item_Name==""){
+        res.send("Error 201 : Please specify a unique item_name")
+    }
 
     // checking if availability is either yes or no
-    if(Item_Availability!="no" || Item_Availability!="yes" ){
+    else if(Item_Availability!="no" && Item_Availability!="yes" ){
         res.send("Error 202 : Availability can be either yes or no")
     }
 
     // checking if type is either product or service
-    if(Item_Type!="service" || Item_Type!="product" ){
+    else if(Item_Type!="service" && Item_Type!="product" ){
         res.send("Error 203 : Availability can be either product or service")
     }
 
     // checking if cost is an integer
-    if(!Number.isInteger(Item_Cost)){
+    else if(!Number.isInteger(Item_Cost)){
         res.send("Error 204 : Item Cost must be an integer")
     }    
 
     // checking if barcode is an integer
-    if(!Number.isInteger(Item_Barcode) && Item_Barcode!="" ){
+    else if(!Number.isInteger(Item_Barcode) && Item_Barcode!="" ){
         res.send("Error 205 : Item Barcode must be an integer")
     } 
 
-    con.query('select * from items_status where item_id =? or item_name =?',[Item_ID,Item_Name],(err,result)=>{
-        // logging errors if any
-        if(err){
-            console.log(err)
-        }
+    else{
+        con.query('select * from items_status where item_id =? or item_name =?',[Item_ID,Item_Name],(err,result)=>{
+            // logging errors if any
+            if(err){
+                console.log(err)
+            }
         
-        // checking if the Item_ID already exits or the Item_Name or the Barcode
-        else if(result.length >= 1){
-            con.query('select * from items_status where item_id =?',Item_ID,(err,result)=>{
-                if(err){
-                    console.log(err)
-                }
-                else if(result.length >=1){
-                    res.send("Error 210 : Item_Id must be unique")
-                }
-                else{
-                    res.send("Error 211 : Item_Name must be unique")
-                }
-            })
-        }
-
-        else {
-            // checking if the barcode is specified
-            if(item_barcode !="") {
-                con.query('insert into items_status values(?,?,?,?,?,?,?)',[Item_ID,Item_Name,Item_Type,Item_Barcode,Item_Availability,Item_Cost,Item_Description],(err,result)=>{
-                    if(err)
-                    {
+            // checking if the Item_ID already exits or the Item_Name or the Barcode
+            else if(result.length >= 1){
+                con.query('select * from items_status where item_id =?',Item_ID,(err,result)=>{
+                    if(err){
                         console.log(err)
-                    }else {
-                        res.send("Item Updated") ;
+                    }
+                    else if(result.length >=1){
+                        res.send("Error 210 : Item_Id must be unique")
+                    }
+                    else{
+                        res.send("Error 211 : Item_Name must be unique")
                     }
                 })
             }
-            //if the item does not have a barcode
+
             else {
-                con.query('insert into items_status values(?,?,?,?,?,?,?)',[Item_ID,Item_Name,Item_Type,,Item_Availability,Item_Cost,Item_Description],(err,result)=>{
-                    if(err)
-                    {
-                        console.log(err)
-                    }else {
-                        res.send("Item Updated") ;
-                    }
-                })
-            }
+                // checking if the barcode is specified
+                if(Item_Barcode !="") {
+                    con.query('insert into items_status values(?,?,?,?,?,?,?)',[Item_ID,Item_Name,Item_Type,Item_Barcode,Item_Availability,Item_Cost,Item_Description],(err,result)=>{
+                        if(err)
+                        {
+                            console.log(err)
+                        }else {
+                            res.send("Item Updated") ;
+                        }
+                    })
+                }
 
-        }
-        
-    })
+                //if the item does not have a barcode
+                else {
+                    con.query('insert into items_status values(?,?,?,?,?,?,?)',[Item_ID,Item_Name,Item_Type,,Item_Availability,Item_Cost,Item_Description],(err,result)=>{
+                        if(err)
+                        {
+                            console.log(err)
+                        }else {
+                            res.send("Item Updated") ;
+                        }
+                    })
+                }
+            }
+        })
+    }
 });
 
 
@@ -162,8 +163,12 @@ app.post('/admin/search_by_date',(req,res)=>{
     //checking if from date is empty or not 
     let start_date = "" ;
     let end_date = "" ;
+
+    //if the from date is not empty
     if(from_date!=""){
         start_date = new Date(from_date).toISOString().split('T')[0];
+
+        //fetching the results between the two specified dates
         if(to_date!=""){
             end_date = new Date(to_date).toISOString().split('T')[0];
             con.query('select * from orders where Date_Purchase>=? & Date_Purchase<?',[start_date,end_date],(err,result)=>{
@@ -176,6 +181,8 @@ app.post('/admin/search_by_date',(req,res)=>{
                 }
             })
         }
+
+        //fetching the results from the specified date
         else {
             con.query('select * from orders where Date_Purchase>=?',start_date,(err,result)=>{
                 if(err){
@@ -189,7 +196,10 @@ app.post('/admin/search_by_date',(req,res)=>{
         }
     }
 
+    // if from date is empty
     else {
+
+        //fetching the results upto the specified date
         if(to_date!=""){
             end_date = new Date(to_date).toISOString().split('T')[0];
             con.query('select * from orders where Date_Purchase<?',end_date,(err,result)=>{
@@ -202,6 +212,8 @@ app.post('/admin/search_by_date',(req,res)=>{
                 }
             })
         }
+
+        // fetching all the orders
         else {
             con.query('select * from orders',start_date,(err,result)=>{
                 if(err){
@@ -216,6 +228,7 @@ app.post('/admin/search_by_date',(req,res)=>{
     }
 });
 
+// searching by other parameters (item_id , item_name and item_type)
 app.post('/admin/search_by_parameter',(req,res)=>{
     const Item_ID =  (req.body.item_id).toLowerCase();
     const Item_Name =  (req.body.item_name).toLowerCase();
@@ -231,6 +244,7 @@ app.post('/admin/search_by_parameter',(req,res)=>{
     })
 })
 
+// the application works on port 2999
 app.listen(2999,(err)=>{
     if(err)
     {
