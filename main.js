@@ -105,27 +105,27 @@ app.get('/get/total_bill',(req,res)=>{
             let cart_detail = req.session.cart[i] ;
 
             //calculation of taxes for product
-            if(cart_detail.Item_Type ===  "product"){
+            if(cart_detail.item_type ===  "product"){
                 // base tax for product
                 tax_charged = 200 ;
 
                 // charging the taxes according to the condition
-                if(cart_detail.Item_Cost > 1000 && cart_detail.Item_Cost<=5000 ){
-                    tax_charged = cart_detail.Item_Cost * (0.12);
+                if(cart_detail.item_cost > 1000 && cart_detail.item_cost<=5000 ){
+                    tax_charged = cart_detail.item_cost * (0.12);
                 }
-                else if (cart_detail.Item_Cost > 5000 ){
-                    tax_charged = cart_detail.Item_Cost * (0.18);
+                else if (cart_detail.item_cost > 5000 ){
+                    tax_charged = cart_detail.item_cost * (0.18);
                 };  
 
                 // creating a template for storing the bill data 
                 bill_data = {
-                    Id : cart_detail.Item_id ,
-                    Name : cart_detail.Item_Name ,
-                    Price : parseFloat(cart_detail.Item_Cost) ,
+                    Id : cart_detail.item_id ,
+                    Name : cart_detail.item_name ,
+                    Price : parseFloat(cart_detail.item_cost) ,
                     Type : "product" ,
                     Tax : tax_charged , 
                     Quantity : cart_detail.quantity ,
-                    Total_Price_Item : cart_detail.quantity * (cart_detail.Item_Cost+tax_charged)
+                    Total_Price_Item : cart_detail.quantity * (cart_detail.item_cost+tax_charged)
                 };
             }
 
@@ -135,27 +135,27 @@ app.get('/get/total_bill',(req,res)=>{
                 tax_charged = 100 ;
 
                 // charging the taxes according to the condition
-                if(cart_detail.Item_Cost > 1000 && cart_detail.Item_Cost<=8000 ){
-                    tax_charged = cart_detail.Item_Cost * (0.10);
+                if(cart_detail.item_cost > 1000 && cart_detail.item_cost<=8000 ){
+                    tax_charged = cart_detail.item_cost * (0.10);
                 }
-                else if (cart_detail.Item_Cost > 8000 ){
-                    tax_charged = cart_detail.Item_Cost * (0.15);
+                else if (cart_detail.item_cost > 8000 ){
+                    tax_charged = cart_detail.item_cost * (0.15);
                 };   
 
                 // creating a template for storing the bill data 
                 bill_data = {
-                    Id : cart_detail.Item_id ,
-                    Name : cart_detail.Item_Name ,
-                    Price : parseFloat(cart_detail.Item_Cost) ,
+                    Id : cart_detail.item_id ,
+                    Name : cart_detail.item_name ,
+                    Price : parseFloat(cart_detail.item_cost) ,
                     Type : "service" ,
                     Tax : tax_charged , 
                     Quantity : cart_detail.quantity ,
-                    Total_Price_Item : cart_detail.quantity * (cart_detail.Item_Cost+tax_charged)
+                    Total_Price_Item : cart_detail.quantity * (cart_detail.item_cost+tax_charged)
                 };
             }   
             
             // calculating the total price
-            Total_Price += cart_detail.quantity * (cart_detail.Item_Cost+tax_charged) ;
+            Total_Price += cart_detail.quantity * (cart_detail.item_cost+tax_charged) ;
             
             // adding each items billing data to the bill session
             req.session.bill.push(bill_data);
@@ -178,24 +178,27 @@ app.get('/get/total_bill',(req,res)=>{
 
 //confirm the bill 
 app.get('/get/confirm_order',(req,res)=>{
+    // checking if the bill session is made or not
     if(req.session.bill){
+        // updating the current time and date of the transaction
         let date_transaction = new Date().toISOString().split('T')[0];
         let time_transaction = new Date().toTimeString().split(' ')[0];
         for(let i = 0 ; i<req.session.bill.length-1 ; i++){
             let bill_detail = req.session.bill[i];
+
+            // updating the values in the orders database
             con.query('insert into orders values(?,?,?,?,?,?,?,?,?)',[bill_detail.Id,bill_detail.Name,bill_detail.Price,bill_detail.Type,bill_detail.Tax,bill_detail.Quantity,bill_detail.Total_Price_Item,time_transaction,date_transaction],(err,result)=>{
-                if(err)
-                {
+                if(err){
                     console.log(err);
                 }else {
                     res.send("Success!! Bill Confirmed");
                 }
-                
             })       
         }
         req.session.bill=[]
         req.session.cart = [] ;
     }
+    // if the bill session is not made then redirection to /total_bill
     else{
         res.redirect("/get/total_bill")
     }
@@ -204,26 +207,29 @@ app.get('/get/confirm_order',(req,res)=>{
 
 // add items to the cart
 app.post('/post/add_cart',(req,res)=>{
-    const product_id = (req.body.product_id).toLowerCase() ;
-    const product_name = (req.body.product_name).toLowerCase() ;
-    const product_price = req.body.product_price ;
-    let tax  = 0 ;
+
+    // fetching the details of items for the database
+    const item_id = (req.body.item_id).toLowerCase() ;
+    const item_name = (req.body.item_name).toLowerCase() ;
+    const item_cost = req.body.item_cost ;
     let count = 0 ;
 
+    // increasing the quantity of item if present in cart
     for(let i =0 ; i<req.session.cart.length ; i++)
     {
-        if(req.session.cart[i].product_id === product_id){
+        if(req.session.cart[i].item_id === item_id){
             req.session.cart[i].quantity += 1;
             count ++;
         }
     }
 
+    // adding a new item to the cart
     if(count === 0)
     {
         const cart_data = {
-            product_id : product_id,
-            product_name : product_name,
-            product_price : parseFloat(product_price),
+            product_id : item_id,
+            product_name : item_name,
+            product_price : parseFloat(item_cost),
             quantity : 1
         };
         req.session.cart.push(cart_data);
@@ -233,12 +239,14 @@ app.post('/post/add_cart',(req,res)=>{
 
 // remove items from the cart
 app.get('/post/remove_item',(req,res)=>{
-    const product_id = req.body.product_id ;
-    console.log(req.query.product_id)
+    const item_id = req.body.item_id ;
+    console.log(req.query.item_id)
+
+    // removing the given item id from the cart
     for(let i = 0 ; i<req.session.cart.length ; i++)
     {
-        console.log(req.session.cart[i].product_id)
-        if(req.session.cart[i].product_id === product_id)
+        console.log(req.session.cart[i].item_id)
+        if(req.session.cart[i].item_id === item_id)
         {
             console.log("Yes") ;
             req.session.cart.splice(i,1);
