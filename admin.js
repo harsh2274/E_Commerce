@@ -15,26 +15,7 @@ app.use(express.static('public'));
 
 //Set up EJS as template engine
 app.set('view engine', 'ejs');
-
-// importing the bcryptjs for encrypting the passwords
-const bcrypt = require('bcryptjs');
 app.use(express.json())
-
-//creating a scheme for phone number validiation
-const validatePhoneNumber = require('validate-phone-number-node-js');
-
-//Creating a scheme for password validiation 
-var passwordValidator = require('password-validator');
-var schema = new passwordValidator();
-
-// Add properties to it
-schema
-.is().min(8)                                    // Minimum length 8
-.is().max(100)                                  // Maximum length 100
-.has().uppercase()                              // Must have uppercase letters
-.has().lowercase()                              // Must have lowercase letters
-.has().digits(1)                                // Must have at least 1 digits
-.is().not().oneOf(['Passw0rd', 'Password123','Password']);
 
 // establishing a conenction with mysql
 //-->dont access the pssword directly 
@@ -65,103 +46,113 @@ app.use(session({
 }))
 
 
-//adding of services 
-app.post('/post/new_services',(req,res)=>{
-    const Service_ID = (req.body.Service_ID).toLowerCase() 
-    const Service_Name =  (req.body.Service_Name).toLowerCase() 
-    const Availability = req.body.Availability
-    const Cost = req.body.Cost
-    const Description = req.body.Description
+//adding of items 
+app.post('/post/new_item',(req,res)=>{
+    
+    // requesting of items from the rest API
+    const Item_ID = (req.body.item_id).toLowerCase() 
+    const Item_Name = (req.body.item_name).toLowerCase() 
+    const Item_Type = (req.body.item_type).toLowerCase()
+    const Item_Barcode = req.body.item_barcode
+    const Item_Availability = (req.body.item_availability).toLowerCase()
+    const Item_Cost = req.body.item_cost
+    const Item_Description = req.body.item_description
 
-    con.query('select * from current_status_services where Service_ID =? or Service_Name =?',[Service_ID,Service_Name],(err,result)=>{
+    // every item must have a ID
+    if(Item_ID==""){
+        res.send("Error 200 : Please specify a unique item_id")
+    }
+
+    //every item must have a name
+    if(Item_Name==""){
+        res.send("Error 201 : Please specify a unique item_name")
+    }
+
+    //if cost is not specified by default it will be made as zero
+    if(Item_Cost==""){
+        Item_Cost = 0 
+    }
+
+    //by default a item type will be connsiderd as a product
+    if(Item_Type==""){
+        Item_Type = "product"
+    }
+
+    //by default the availibility will be no 
+    if(Item_Availability==""){
+        Item_Availability = "no"
+    }
+
+    // checking if availability is either yes or no
+    if(Item_Availability!="no" || Item_Availability!="yes" ){
+        res.send("Error 202 : Availability can be either yes or no")
+    }
+
+    // checking if type is either product or service
+    if(Item_Type!="service" || Item_Type!="product" ){
+        res.send("Error 203 : Availability can be either product or service")
+    }
+
+    // checking if cost is an integer
+    if(!Number.isInteger(Item_Cost)){
+        res.send("Error 204 : Item Cost must be an integer")
+    }    
+
+    // checking if barcode is an integer
+    if(!Number.isInteger(Item_Barcode) && Item_Barcode!="" ){
+        res.send("Error 205 : Item Barcode must be an integer")
+    } 
+
+    con.query('select * from items_status where item_id =? or item_name =?',[Item_ID,Item_Name],(err,result)=>{
+        // logging errors if any
         if(err){
             console.log(err)
         }
+        
         // checking if the Item_ID already exits or the Item_Name or the Barcode
         else if(result.length >= 1){
-            con.query('select * from current_status_products where Service_ID =?',Service_ID,(err,result)=>{
+            con.query('select * from items_status where item_id =?',Item_ID,(err,result)=>{
                 if(err){
                     console.log(err)
                 }
                 else if(result.length >=1){
-                    res.send("Service-ID already exists")
+                    res.send("Error 210 : Item_Id must be unique")
                 }
                 else{
-                    res.send("Service-Name already exists")
+                    res.send("Error 211 : Item_Name must be unique")
                 }
             })
         }
 
         else {
-            con.query('insert into current_status_products values(?,?,?,?,?,?)',[Service_ID,Service_Name,Availability,Cost,Description],(err,result)=>{
-                if(err)
-                {
-                    console.log(err)
-                }else {
-                    //--> update this cmd to save the user back
-                    res.send("Service Updated") ;
-                }
-                
-            })
+            // checking if the barcode is specified
+            if(item_barcode !="") {
+                con.query('insert into items_status values(?,?,?,?,?,?,?)',[Item_ID,Item_Name,Item_Type,Item_Barcode,Item_Availability,Item_Cost,Item_Description],(err,result)=>{
+                    if(err)
+                    {
+                        console.log(err)
+                    }else {
+                        res.send("Item Updated") ;
+                    }
+                })
+            }
+            //if the item does not have a barcode
+            else {
+                con.query('insert into items_status values(?,?,?,?,?,?,?)',[Item_ID,Item_Name,Item_Type,,Item_Availability,Item_Cost,Item_Description],(err,result)=>{
+                    if(err)
+                    {
+                        console.log(err)
+                    }else {
+                        res.send("Item Updated") ;
+                    }
+                })
+            }
+
         }
         
     })
 });
 
-
-//adding of products 
-app.post('/post/new_product',(req,res)=>{
-    const Item_ID = (req.body.Item_ID).toLowerCase() 
-    const Item_Name =  (req.body.Item_Name).toLowerCase() 
-    const Barcode  = req.body.Barcode
-    const Availability = req.body.Availability
-    const Cost = req.body.Cost
-    const Description = req.body.Description
-
-    con.query('select * from current_status_products where Item_ID =? or Item_Name =? or Barcode =?',[Item_ID,Item_Name,Barcode],(err,result)=>{
-        if(err){
-            console.log(err)
-        }
-        // checking if the Item_ID already exits or the Item_Name or the Barcode
-        else if(result.length >= 1){
-            con.query('select * from current_status_products where Item_ID =?',Item_ID,(err,result)=>{
-                if(err){
-                    console.log(err)
-                }
-                else if(result.length >=1){
-                    res.send("Item-ID already exists")
-                }
-                else{
-                    con.query('select * from current_status_products where Item_Name =?',Item_Name,(err1,result1)=>{
-                        if(err1){
-                            console.log(err)
-                        }
-                        else if(result1.length >=1){
-                            res.send("Item-Name already exists")
-                        }
-                        else{
-                            res.send("Barcode already exists")
-                        }
-                    })
-                }
-            })
-        }
-
-        else {
-            con.query('insert into current_status_products values(?,?,?,?,?,?)',[Item_ID,Item_Name,Barcode,Availability,Cost,Description],(err,result)=>{
-                if(err)
-                {
-                    console.log(err)
-                }else {
-                    //--> update this cmd to save the user back
-                    res.send("Item Updated") ;
-                }
-                
-            })
-        }
-        
-    })
-});
 
 app.post('/admin/search_by_date',(req,res)=>{
     
@@ -240,11 +231,11 @@ app.post('/admin/search_by_parameter',(req,res)=>{
     })
 })
 
-app.listen(3000,(err)=>{
+app.listen(2999,(err)=>{
     if(err)
     {
         console.log(err)
     }else {
-        console.log("on port 3000")
+        console.log("on port 2999")
     }
 })
