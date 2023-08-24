@@ -23,10 +23,7 @@ app.use(express.json())
 //creating a scheme for phone number validiation
 const validatePhoneNumber = require('validate-phone-number-node-js');
 
-
-
 //Creating a scheme for password validiation 
-
 var passwordValidator = require('password-validator');
 var schema = new passwordValidator();
 
@@ -91,6 +88,7 @@ app.get('/get/clear_cart',(req,res)=>{
     res.redirect("/home");
 })
 
+
 //generate the total bill
 app.get('/get/total_bill',(req,res)=>{
     if(req.session.cart){
@@ -136,24 +134,30 @@ app.get('/get/total_bill',(req,res)=>{
 //confirm the bill 
 app.get('/get/confirm_order',(req,res)=>{
     if(req.session.bill){
-        let dateObject = new Date();
+        let date_transaction = new Date().toISOString().split('T')[0];
+        let time_transaction = new Date().toTimeString().split(' ')[0];
         for(let i = 0 ; i<req.session.bill.length-1 ; i++){
             let bill_detail = req.session.bill[i];
-            con.query('insert into orders values(?,?,?,?,?,?,?,?)',[bill_detail.Id,bill_detail.Name,bill_detail.Price,bill_detail.Type,bill_detail.Tax,bill_detail.Quantity,bill_detail.Total_Price_Item,dateObject],(err,result)=>{
+            con.query('insert into orders values(?,?,?,?,?,?,?,?,?)',[bill_detail.Id,bill_detail.Name,bill_detail.Price,bill_detail.Type,bill_detail.Tax,bill_detail.Quantity,bill_detail.Total_Price_Item,time_transaction,date_transaction],(err,result)=>{
                 if(err)
                 {
-                    console.log(err)
+                    console.log(err);
                 }else {
-                    res.send("Success!! Bill confirmed and updated ") ;
+                    res.send("Success!! Bill Confirmed");
                 }
                 
             })       
         }
-        req.session.bill=[] 
+        req.session.bill=[]
+        req.session.cart = [] ;
     }
     else{
         res.redirect("/get/total_bill")
     }
+})
+
+app.get('/get/confirm_bill',(req,res)=>{
+    res.send("Success!! Bill confirmed and updated ") ;
 })
 
 // add items to the cart
@@ -206,103 +210,6 @@ app.get('/post/view_cart',(req,res)=>{
     res.send(JSON.parse(JSON.stringify(req.session.cart))) ;
 });
 
-//adding of services 
-app.post('/post/new_services',(req,res)=>{
-    const Service_ID = (req.body.Service_ID).toLowerCase() 
-    const Service_Name =  (req.body.Service_Name).toLowerCase() 
-    const Availability = req.body.Availability
-    const Cost = req.body.Cost
-    const Description = req.body.Description
-
-    con.query('select * from current_status_services where Service_ID =? or Service_Name =?',[Service_ID,Service_Name],(err,result)=>{
-        if(err){
-            console.log(err)
-        }
-        // checking if the Item_ID already exits or the Item_Name or the Barcode
-        else if(result.length >= 1){
-            con.query('select * from current_status_products where Service_ID =?',Service_ID,(err,result)=>{
-                if(err){
-                    console.log(err)
-                }
-                else if(result.length >=1){
-                    res.send("Service-ID already exists")
-                }
-                else{
-                    res.send("Service-Name already exists")
-                }
-            })
-        }
-
-        else {
-            con.query('insert into current_status_products values(?,?,?,?,?,?)',[Service_ID,Service_Name,Availability,Cost,Description],(err,result)=>{
-                if(err)
-                {
-                    console.log(err)
-                }else {
-                    //--> update this cmd to save the user back
-                    res.send("Service Updated") ;
-                }
-                
-            })
-        }
-        
-    })
-});
-
-
-//adding of products 
-app.post('/post/new_product',(req,res)=>{
-    const Item_ID = (req.body.Item_ID).toLowerCase() 
-    const Item_Name =  (req.body.Item_Name).toLowerCase() 
-    const Barcode  = req.body.Barcode
-    const Availability = req.body.Availability
-    const Cost = req.body.Cost
-    const Description = req.body.Description
-
-    con.query('select * from current_status_products where Item_ID =? or Item_Name =? or Barcode =?',[Item_ID,Item_Name,Barcode],(err,result)=>{
-        if(err){
-            console.log(err)
-        }
-        // checking if the Item_ID already exits or the Item_Name or the Barcode
-        else if(result.length >= 1){
-            con.query('select * from current_status_products where Item_ID =?',Item_ID,(err,result)=>{
-                if(err){
-                    console.log(err)
-                }
-                else if(result.length >=1){
-                    res.send("Item-ID already exists")
-                }
-                else{
-                    con.query('select * from current_status_products where Item_Name =?',Item_Name,(err1,result1)=>{
-                        if(err1){
-                            console.log(err)
-                        }
-                        else if(result1.length >=1){
-                            res.send("Item-Name already exists")
-                        }
-                        else{
-                            res.send("Barcode already exists")
-                        }
-                    })
-                }
-            })
-        }
-
-        else {
-            con.query('insert into current_status_products values(?,?,?,?,?,?)',[Item_ID,Item_Name,Barcode,Availability,Cost,Description],(err,result)=>{
-                if(err)
-                {
-                    console.log(err)
-                }else {
-                    //--> update this cmd to save the user back
-                    res.send("Item Updated") ;
-                }
-                
-            })
-        }
-        
-    })
-});
 
 
 
