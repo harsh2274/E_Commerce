@@ -57,7 +57,7 @@ con.connect((err)=>{
 
 //Set up of Session Middleware
 app.use(session({
-    secret : "This_project_is_made_for_plotly" ,
+    secret : "This_project_is_made_for_plotline" ,
     resave : false,
     saveUninitialized : true ,
     cookie : {secure : false}
@@ -177,6 +177,7 @@ app.get('/get/total_bill',(req,res)=>{
 
 
 //confirm the bill 
+// change the database 
 app.get('/get/confirm_order',(req,res)=>{
     // checking if the bill session is made or not
     if(req.session.bill){
@@ -206,49 +207,75 @@ app.get('/get/confirm_order',(req,res)=>{
 
 
 // add items to the cart
+
 app.post('/post/add_cart',(req,res)=>{
+    
+    // creating a new cart if not exist
+    if(!req.session.cart){
+        req.session.cart = []
+    }
 
     // fetching the details of items for the database
     const item_id = (req.body.item_id).toLowerCase() ;
-    const item_name = (req.body.item_name).toLowerCase() ;
-    const item_cost = req.body.item_cost ;
-    let count = 0 ;
 
-    // increasing the quantity of item if present in cart
-    for(let i =0 ; i<req.session.cart.length ; i++)
-    {
-        if(req.session.cart[i].item_id === item_id){
-            req.session.cart[i].quantity += 1;
-            count ++;
+    let item_name
+    let item_cost 
+    
+    con.query('select * from items_status where item_id=?',item_id,(err,result)=>{
+        if(err)
+        {
+            console.log(err)
         }
-    }
+        else{
+            if(result.length==1){
+                item_name = result[0].Item_Name ;
+                item_cost = result[0].Item_Cost ;
 
-    // adding a new item to the cart
-    if(count === 0)
-    {
-        const cart_data = {
-            product_id : item_id,
-            product_name : item_name,
-            product_price : parseFloat(item_cost),
-            quantity : 1
-        };
-        req.session.cart.push(cart_data);
-    }
-    res.redirect("/home");
-});
+                let count = 0 ;
+
+                // increasing the quantity of item if present in cart
+                for(let i =0 ; i<req.session.cart.length ; i++)
+                {
+                    if(req.session.cart[i].item_id === item_id){
+                        req.session.cart[i].quantity += 1;
+                        count ++;
+                    }
+                }
+
+                // adding a new item to the cart
+                if(count === 0)
+                {
+                    const cart_data = {
+                        item_id : item_id,
+                        item_name : item_name,
+                        item_cost : parseFloat(item_cost),
+                        quantity : 1
+                };
+                    req.session.cart.push(cart_data);
+                }
+                res.redirect("/home") ;
+            }
+
+            // if in case the item_id does not match with the values present in table 
+            else{
+                res.send("Error 402 : Item_Id does not exist in table")
+            }
+        }
+    })
+})
+ 
 
 // remove items from the cart
+// --> need to check this showing undefined 
+
 app.get('/post/remove_item',(req,res)=>{
     const item_id = req.body.item_id ;
-    console.log(req.query.item_id)
 
     // removing the given item id from the cart
     for(let i = 0 ; i<req.session.cart.length ; i++)
     {
-        console.log(req.session.cart[i].item_id)
         if(req.session.cart[i].item_id === item_id)
         {
-            console.log("Yes") ;
             req.session.cart.splice(i,1);
         }
     }
@@ -259,8 +286,6 @@ app.get('/post/remove_item',(req,res)=>{
 app.get('/post/view_cart',(req,res)=>{
     res.send(JSON.parse(JSON.stringify(req.session.cart))) ;
 });
-
-
 
 
 //adding of users to the database 
