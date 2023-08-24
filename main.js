@@ -221,6 +221,7 @@ app.post('/post/add_cart',(req,res)=>{
     let item_name
     let item_cost 
     
+    // validiating the item_id passed
     con.query('select * from items_status where item_id=?',item_id,(err,result)=>{
         if(err)
         {
@@ -266,7 +267,6 @@ app.post('/post/add_cart',(req,res)=>{
  
 
 // remove items from the cart
-// --> need to check this showing undefined 
 
 app.get('/post/remove_item',(req,res)=>{
     const item_id = req.body.item_id ;
@@ -298,62 +298,86 @@ app.post('/post/add_user',(req,res)=>{
     const User_Mobile_Number = req.body.User_Mobile_Number
     const User_Email = req.body.User_Email
 
+    // check if user id is not null
+    if (User_ID === ""){
+        res.send("Error 501 : User Id cannot be null")
+    }
+    //check is the user name is not null
+    else if (User_Name === ""){
+        res.send("Error 502 : User Name cannot be null")
+    }
+    //check is the password is not null
+    else if (User_Password === ""){
+        res.send("Error 503 : User Password cannot be null")
+    }
+    //check is the mobile number is not null
+    else if (User_Mobile_Number === ""){
+        res.send("Error 504 : User Mobile Number cannot be null")
+    }
+    //check is the user email is not null
+    else if (User_Email === ""){
+        res.send("Error 505 : User User Email cannot be null")
+    }
+
     //checking if user_id and email_id are unique
-    con.query('select * from user_details where User_ID =? or User_Email =?',[User_ID,User_Email],(err,result)=>{
-        if(err){
-            console.log(err)
-        }
+    else {
+        con.query('select * from user_details where User_ID =? or User_Email =?',[User_ID,User_Email],(err,result)=>{
+            if(err){
+                console.log(err)
+            }
 
-        // checking if the email id already exits or the user id 
-        else if(result.length >= 1){
-            con.query('select * from user_details where User_ID =?',User_ID,(err,result)=>{
-                if(err){
-                    console.log(err)
-                }
-                else if(result.length >=1){
-                    res.send("User-Id already exists")
-                }
-                else{
-                    res.send("Email Address already exists")
-                }
-            })
-        }
+            // checking if the email id already exits or the user id 
+            else if(result.length >= 1){
+                con.query('select * from user_details where User_ID =?',User_ID,(err,result)=>{
+                    if(err){
+                        console.log(err)
+                    }
+                    else if(result.length >=1){
+                        res.send("Error 511 : User-Id already exists")
+                    }
+                    else{
+                        res.send("Error 512 : Email Address already exists")
+                    }
+                })
+            }
 
-        else {
-            // checking for phone number validity
-            const result = validatePhoneNumber.validate(User_Mobile_Number);
+            else {
+                // checking for phone number validity
+                const result = validatePhoneNumber.validate(User_Mobile_Number);
 
-            // encryption of password
-            if(result){
-                if(schema.validate(User_Password)){
-                    bcrypt.genSalt(10, function (err, Salt) {
-                        // The bcrypt is used for encrypting password.
-                        bcrypt.hash(User_Password, Salt, function (err, hash) {
+                // encryption of password
+                if(result){
+                    if(schema.validate(User_Password)){
+                        bcrypt.genSalt(10, function (err, Salt) {
+                            // The bcrypt is used for encrypting password.
+                            bcrypt.hash(User_Password, Salt, function (err, hash) {
      
-                            if (err) {
-                                return console.log('Cannot encrypt');
-                            }
-                            con.query('insert into user_details values(?,?,?,?,?)',[User_ID,User_Name,hash,User_Mobile_Number,User_Email],(err,result)=>{
-                                if(err)
-                                {
-                                    console.log(err)
-                                }else {
-                                    //--> update tghis cmd to save the user back
-                                    res.send("User Updated") ;
+                                if (err) {
+                                    return console.log('Cannot encrypt');
                                 }
+
+                                // After the encryption the values are added
+                                con.query('insert into user_details values(?,?,?,?,?)',[User_ID,User_Name,hash,User_Mobile_Number,User_Email],(err,result)=>{
+                                    if(err)
+                                    {
+                                        console.log(err)
+                                    }else {
+                                        res.send("User Updated") ;
+                                    }
+                                })
                             })
                         })
-                    })
+                    }
+                    else {
+                        res.send("Password must be between 8-100 long , it must have a lower case , a upper case and a digit  ")
+                    }
                 }
-                else {
-                    res.send("Password must be between 8-100 long , it must have a lower case , a upper case and a digit  ")
+                else{
+                    res.send("Mobile Number should be in the format +919926xxxxxx")
                 }
             }
-            else{
-                res.send("Mobile Number should be in the format +919926xxxxxx")
-            }
-        }
-    })
+        })
+    }
 })
 
 
