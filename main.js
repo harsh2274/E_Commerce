@@ -6,6 +6,12 @@ const app = express()
 // for taking values front frontend js
 const body_parser = require('body-parser');
 
+// for creation of authentication 
+const jwt = require("jsonwebtoken")
+
+//creation of a secret key
+const secretKey = "secretkey_plotline" ;
+
 // creation of session keys 
 const session = require('express-session');
 
@@ -380,6 +386,29 @@ app.post('/post/add_user',(req,res)=>{
     }
 })
 
+function verifyToken(req,res,next){
+    const requestHeader = req.body.authorization ;
+    if(typeof requestHeader !== "undefined"){
+        const bearer = requestHeader.split(" ");
+        const token = bearer[1] ;
+        next();
+    }else{
+        res.send("Error 2 : Token is not valid")
+    }
+}
+
+app.post("/login",(req,res)=>{
+    const user = {
+        id:1,
+        username:"anil",
+        email:"abc@test.com"
+    }
+    jwt.sign({ user },secretKey,{expiresIn:'300s'},(err,token)=>{
+        res.json({
+            token
+        })
+    })
+})
 
 app.listen(3000,(err)=>{
     if(err)
