@@ -163,7 +163,7 @@ app.post('/post/new_product',(req,res)=>{
     })
 });
 
-app.post('/admin/search_orders_bydate',(req,res)=>{
+app.post('/admin/search_by_date',(req,res)=>{
     
     const from_date = req.body.from_date;
     const to_date = req.body.to_date;
@@ -197,10 +197,48 @@ app.post('/admin/search_orders_bydate',(req,res)=>{
             })
         }
     }
-    
 
+    else {
+        if(to_date!=""){
+            end_date = new Date(to_date).toISOString().split('T')[0];
+            con.query('select * from orders where Date_Purchase<?',end_date,(err,result)=>{
+                if(err){
+                    console.log(err)
+                }
+                
+                else{
+                    res.send(JSON.parse(JSON.stringify(result))) ;
+                }
+            })
+        }
+        else {
+            con.query('select * from orders',start_date,(err,result)=>{
+                if(err){
+                    console.log(err)
+                }
+                
+                else{
+                    res.send(JSON.parse(JSON.stringify(result))) ;
+                }
+            })
+        }
+    }
+});
+
+app.post('/admin/search_by_parameter',(req,res)=>{
+    const Item_ID =  (req.body.item_id).toLowerCase();
+    const Item_Name =  (req.body.item_name).toLowerCase();
+    const Item_Type =  (req.body.item_type).toLowerCase();
+
+    con.query('select * from orders where Item_Id=? or Item_Name=? or Item_Type=?',[Item_ID,Item_Name,Item_Type],(err,result)=>{
+        if(err){
+            console.log(err)
+        }
+        else{
+            res.send(JSON.parse(JSON.stringify(result))) ;
+        }
+    })
 })
-
 
 app.listen(3000,(err)=>{
     if(err)
