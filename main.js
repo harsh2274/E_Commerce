@@ -25,6 +25,10 @@ app.set('view engine', 'ejs');
 const bcrypt = require('bcryptjs');
 app.use(express.json())
 
+// importing cookies library
+const cookieParser = require("cookie-parser");
+app.use(cookieParser()) ;
+
 //creating a scheme for phone number validiation
 const validatePhoneNumber = require('validate-phone-number-node-js');
 
@@ -89,14 +93,14 @@ app.get("/home",(req,res) => {
 })
 
 // clear items from the cart 
-app.get('/get/clear_cart',(req,res)=>{
+app.get('/get/clear_cart',verifyToken,(req,res)=>{
     req.session.cart = [] ;
     res.redirect("/home");
 })
 
 
 //generate the total bill
-app.get('/get/total_bill',(req,res)=>{
+app.get('/get/total_bill',verifyToken,(req,res)=>{
 
     //checking if the session cart exists or not
     if(req.session.cart){
@@ -184,7 +188,7 @@ app.get('/get/total_bill',(req,res)=>{
 
 //confirm the bill 
 // change the database 
-app.get('/get/confirm_order',(req,res)=>{
+app.get('/get/confirm_order',verifyToken,(req,res)=>{
     // checking if the bill session is made or not
     if(req.session.bill){
         // updating the current time and date of the transaction
@@ -214,8 +218,10 @@ app.get('/get/confirm_order',(req,res)=>{
 
 // add items to the cart
 
-app.post('/post/add_cart',(req,res)=>{
+app.post('/post/add_cart',verifyToken,(req,res)=>{
     
+    console.log(`this is my cookie :${req.cookies.jwtoken}`) ;
+
     // creating a new cart if not exist
     if(!req.session.cart){
         req.session.cart = []
@@ -274,7 +280,7 @@ app.post('/post/add_cart',(req,res)=>{
 
 // remove items from the cart
 
-app.get('/post/remove_item',(req,res)=>{
+app.get('/post/remove_item',verifyToken,(req,res)=>{
     const item_id = req.body.item_id ;
 
     // removing the given item id from the cart
@@ -290,14 +296,8 @@ app.get('/post/remove_item',(req,res)=>{
 
 //view the cart 
 app.get('/post/view_cart',verifyToken,(req,res)=>{
-    jwt.verify(req.token,secretKey,(err,result)=>{
-        if(err){
-            res.send("Invalid Token")
-        }else{
-            res.send(JSON.parse(JSON.stringify(req.session.cart))) ;        
-        }  
-    })
-});
+    res.send(JSON.parse(JSON.stringify(req.session.cart))) ;        
+})  
 
 
 //adding of users to the database 
@@ -392,42 +392,36 @@ app.post('/post/add_user',(req,res)=>{
     }
 })
 
-function verifyToken(req,res,next){
-    const requestHeader = req.body.authorization ;
-    if(typeof requestHeader !== "undefined"){
-        const token = requestHeader ;
-        req.token=token ;
-        next();
-    }else{
-        res.send("Error 2 : Token is not valid")
-    }
-}
 
 app.post("/login", async(req,res)=>{
-    const user_email = (req.body.user_name).toLowerCase() ;
+    const user_email = (req.body.user_email).toLowerCase() ;
     const user_pass = req.body.user_pass ;
     
-    con.query('select * from user_deatils where User_Email=?',user_email,async(err,result)=>{
+    con.query('select * from user_details where User_Email=?',user_email,async(err,result)=>{
         if(err)
         {
             console.log(err)
         }
         else{
             if(result.length==1){
-                user_database_pass = result[0].User_Password ;
+                const user_database_pass = result[0].User_Password ;
+                const user_name = result[0].User_ID ; 
                 const isMatch = await bcrypt.compare(user_pass,user_database_pass);
-                jwt.sign({ user },secretKey,{expiresIn:'300s'},async(err,token)=>{
-                    console.log(token) ;
-                    res.cookie("jwtoken",token,{
-                        expires: new Date(Date.now() + 300000),
-                        httpOnly:true
-                    });
-                })
             
                 if(!isMatch) {
                     res.status(400).json({error: "Invalid Password"}) ;
                 }else {
-                res.json({message : "User sighned in sucessfully"}) ;
+                    jwt.sign({ user_name },secretKey,{expiresIn:'100s'},async(err1,token)=>{
+                        if(err1){
+                            console.log(err1)
+                        }else{
+                            res.cookie("jwtoken",token,{
+                                expires: new Date(Date.now() + 100000),
+                                httpOnly:true
+                            });
+                            res.json({message : "User Login Successfully"});
+                        }
+                    })
                 }
             }else{
                 res.status(400).json({error: "User Id does not exist"}) ;
@@ -435,6 +429,17 @@ app.post("/login", async(req,res)=>{
         }
     })
 })
+
+function verifyToken(req,res,next){
+    const token = req.cookies.jwtoken ;
+    if(typeof token !== "undefined"){
+        const verifyUser = jwt.verify(token,secretKey) ;
+        console.log(verifyUser);
+        next() ;
+    }else{
+        res.send("Error 2 : Token is not valid")
+    }
+}
 
 app.listen(3000,(err)=>{
     if(err)
