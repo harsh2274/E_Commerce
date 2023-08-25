@@ -289,8 +289,14 @@ app.get('/post/remove_item',(req,res)=>{
 });
 
 //view the cart 
-app.get('/post/view_cart',(req,res)=>{
-    res.send(JSON.parse(JSON.stringify(req.session.cart))) ;
+app.get('/post/view_cart',verifyToken,(req,res)=>{
+    jwt.verify(req.token,secretKey,(err,result)=>{
+        if(err){
+            res.send("Invalid Token")
+        }else{
+            res.send(JSON.parse(JSON.stringify(req.session.cart))) ;        
+        }  
+    })
 });
 
 
@@ -389,24 +395,44 @@ app.post('/post/add_user',(req,res)=>{
 function verifyToken(req,res,next){
     const requestHeader = req.body.authorization ;
     if(typeof requestHeader !== "undefined"){
-        const bearer = requestHeader.split(" ");
-        const token = bearer[1] ;
+        const token = requestHeader ;
+        req.token=token ;
         next();
     }else{
         res.send("Error 2 : Token is not valid")
     }
 }
 
-app.post("/login",(req,res)=>{
-    const user = {
-        id:1,
-        username:"anil",
-        email:"abc@test.com"
-    }
-    jwt.sign({ user },secretKey,{expiresIn:'300s'},(err,token)=>{
-        res.json({
-            token
-        })
+app.post("/login", async(req,res)=>{
+    const user_email = (req.body.user_name).toLowerCase() ;
+    const user_pass = req.body.user_pass ;
+    
+    con.query('select * from user_deatils where User_Email=?',user_email,async(err,result)=>{
+        if(err)
+        {
+            console.log(err)
+        }
+        else{
+            if(result.length==1){
+                user_database_pass = result[0].User_Password ;
+                const isMatch = await bcrypt.compare(user_pass,user_database_pass);
+                jwt.sign({ user },secretKey,{expiresIn:'300s'},async(err,token)=>{
+                    console.log(token) ;
+                    res.cookie("jwtoken",token,{
+                        expires: new Date(Date.now() + 300000),
+                        httpOnly:true
+                    });
+                })
+            
+                if(!isMatch) {
+                    res.status(400).json({error: "Invalid Password"}) ;
+                }else {
+                res.json({message : "User sighned in sucessfully"}) ;
+                }
+            }else{
+                res.status(400).json({error: "User Id does not exist"}) ;
+            }
+        }
     })
 })
 
