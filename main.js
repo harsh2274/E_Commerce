@@ -1,16 +1,15 @@
 // importing all the necessary libraries
-const express = require("express")
-const mysql = require("mysql")
-const app = express()
+const express = require("express");
+const mysql = require("mysql");
+const dotenv = require("dotenv");
+const app = express();
+
 
 // for taking values front frontend js
 const body_parser = require('body-parser');
 
 // for creation of authentication 
 const jwt = require("jsonwebtoken")
-
-//creation of a secret key
-const secretKey = "secretkey_plotline" ;
 
 // creation of session keys 
 const session = require('express-session');
@@ -46,12 +45,13 @@ schema
 .is().not().oneOf(['Passw0rd', 'Password123']);
 
 // establishing a conenction with mysql
-//-->dont access the pssword directly 
+
+dotenv.config({path:'./config.env'});
 
 const con = mysql.createConnection({
     host:'localhost',
     user:'root',
-    password :"855fc1@NOV25",
+    password :process.env.MYSQLPASSWORD,
     database : "plotly_task"
 })
 
@@ -67,7 +67,7 @@ con.connect((err)=>{
 
 //Set up of Session Middleware
 app.use(session({
-    secret : "This_project_is_made_for_plotline" ,
+    secret : process.env.SESSIONSECRET,
     resave : false,
     saveUninitialized : true ,
     cookie : {secure : false}
@@ -411,7 +411,7 @@ app.post("/login", async(req,res)=>{
                 if(!isMatch) {
                     res.status(400).json({error: "Invalid Password"}) ;
                 }else {
-                    jwt.sign({ user_name },secretKey,{expiresIn:'100s'},async(err1,token)=>{
+                    jwt.sign({ user_name },process.env.SECRETKEY,{expiresIn:'100s'},async(err1,token)=>{
                         if(err1){
                             console.log(err1)
                         }else{
@@ -433,7 +433,7 @@ app.post("/login", async(req,res)=>{
 function verifyToken(req,res,next){
     const token = req.cookies.jwtoken ;
     if(typeof token !== "undefined"){
-        const verifyUser = jwt.verify(token,secretKey) ;
+        const verifyUser = jwt.verify(token,process.env.SECRETKEY) ;
         console.log(verifyUser);
         next() ;
     }else{
