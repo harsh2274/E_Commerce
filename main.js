@@ -35,6 +35,9 @@ const validatePhoneNumber = require('validate-phone-number-node-js');
 var passwordValidator = require('password-validator');
 var schema = new passwordValidator();
 
+//declaration of port
+const PORT = process.env.PORTUSER;
+
 // Add properties to it
 schema
 .is().min(8)                                    // Minimum length 8
@@ -441,11 +444,11 @@ function verifyToken(req,res,next){
     }
 }
 
-app.listen(3000,(err)=>{
+app.listen(PORT,(err)=>{
     if(err)
     {
         console.log(err)
     }else {
-        console.log("on port 3000")
+        console.log(`on port ${PORT}`)
     }
 })
