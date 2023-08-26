@@ -1,14 +1,17 @@
+// importing all the important libraries
 const express = require('express');
 const router = express.Router();
+const dotenv = require("dotenv");
+dotenv.config({path:'./config.env'}) ;
 
 // for taking values front frontend js
 const body_parser = require('body-parser');
 
 // for creation of authentication 
-const jwt = require("jsonwebtoken")
+const jwt = require("jsonwebtoken");
 
 //creation of a secret key
-const secretKey = "secretkey_plotline" ;
+const secretKey = process.env.SECRETKEY;
 
 // creation of session keys 
 const session = require('express-session');
@@ -23,22 +26,24 @@ router.use(express.static('public'));
 const cookieParser = require("cookie-parser");
 router.use(cookieParser()) ;
 
-const mongoose = require('mongoose');
 
 //Set up of Session Middleware
 router.use(session({
-    secret : "This_project_is_made_for_plotline" ,
+    secret : process.env.SESSIONSECRET ,
     resave : false,
     saveUninitialized : true ,
     cookie : {secure : false}
 })) 
 
+//Establishing the connection with the database
 require('../db/conn');
-const User = require("../model/userSchema");
-const Item = require("../model/itemSchema");
-const Order = require("../model/ordersSchema");
 
-const { hash } = require('bcrypt');
+//importing user schema
+const User = require("../model/userSchema");
+//importing item schema
+const Item = require("../model/itemSchema");
+//importing order schema
+const Order = require("../model/ordersSchema");
 
 //creating a scheme for phone number validiation
 const validatePhoneNumber = require('validate-phone-number-node-js');
@@ -63,31 +68,32 @@ schema
 router.post('/post/add_user',async(req,res)=>{
     
     //calling out the parameters from the post reqenst from postman
-    const User_ID = (req.body.User_ID).toLowerCase()
-    const User_Name = (req.body.User_Name).toLowerCase()
-    const User_Password = req.body.User_Password
-    const User_Mobile_Number = req.body.User_Mobile_Number
-    const User_Email = req.body.User_Email
+    const User_ID = (req.body.User_ID).toLowerCase();
+    const User_Name = (req.body.User_Name).toLowerCase();
+    const User_Password = req.body.User_Password;
+    const User_Mobile_Number = req.body.User_Mobile_Number;
+    const User_Email = req.body.User_Email;
 
     // check if user id is not null
     if (User_ID === ""){
-        return res.send("Error 501 : User Id cannot be null")
+        return res.status(400).json({error: "User Id cannot be null"}) ;
     }
+
     //check is the user name is not null
     else if (User_Name === ""){
-        return res.send("Error 502 : User Name cannot be null")
+        return res.status(400).json({error: "User Name cannot be null"}) ;
     }
     //check is the password is not null
     else if (User_Password === ""){
-        return res.send("Error 503 : User Password cannot be null")
+        return res.status(400).json({error: "User Password cannot be null"}) ;
     }
     //check is the mobile number is not null
     else if (User_Mobile_Number === ""){
-        return res.send("Error 504 : User Mobile Number cannot be null")
+        return res.status(400).json({error: "User Mobile Number cannot be null"}) ;
     }
     //check is the user email is not null
     else if (User_Email === ""){
-        return res.send("Error 505 : User User Email cannot be null")
+        return res.status(400).json({error: "User Email cannot be null"}) ;
     }
 
     //checking if the user email and user id are unique
@@ -117,7 +123,7 @@ router.post('/post/add_user',async(req,res)=>{
                     //saving of user data 
                     const user = new User({user_id:User_ID,user_name:User_Name,user_password:hash,mobile_number:User_Mobile_Number,user_email:User_Email});
                         user.save().then(() =>{
-                            res.status(201).json({message:"User Registered Successfully"}) ;
+                            res.status(201).json({message:"User Registered Successfully"}) ; // registed successfully
                         }).catch((err) => res.status(500).json({error:err})) ;
                 });
             });
@@ -153,32 +159,32 @@ router.post('/post/new_item',(req,res)=>{
  
     // every item must have a ID
     if(Item_ID === ""){
-        return res.send("Error 200 : Please specify a unique item_id")
+        return res.status(400).json({error: "Please specify a unique item_id"}) ;
     }
 
     //every item must have a name
     else if(Item_Name==""){
-        return res.send("Error 201 : Please specify a unique item_name")
+        return res.status(400).json({error: "Please specify a unique item_name"}) ;
     }
 
     // checking if availability is either yes or no
     else if(Item_Availability!="no" && Item_Availability!="yes" ){
-        return res.send("Error 202 : Availability can be either yes or no")
+        return res.status(400).json({error: "Availability can be either yes or no"}) ;
     }
 
     // checking if type is either product or service
     else if(Item_Type!="service" && Item_Type!="product" ){
-        return res.send("Error 203 : Availability can be either product or service")
+        return res.status(400).json({error: "Availability can be either product or service"}) ;
     }
 
     // checking if cost is an integer
     else if(!Number.isInteger(Item_Cost)){
-        return res.send("Error 204 : Item Cost must be an integer")
+        return res.status(400).json({error: "Item Cost must be an integer"}) ;
     }    
 
     // checking if barcode is an integer
     else if(!Number.isInteger(Item_Barcode) && Item_Barcode!="" ){
-        return res.send("Error 205 : Item Barcode must be an integer")
+        return res.status(400).json({error: "Item Barcode must be an integer"}) ;
     } 
 
     else{
@@ -186,14 +192,14 @@ router.post('/post/new_item',(req,res)=>{
         .then((itemExist)=>{
             // error if same item id or item name
             if(itemExist){
-                return res.status(422).json({error : "Item Name/ID already exist"});
+                return res.status(422).json({error : "Item Name/ID already exist"}); 
             }
             
             // checking if the item has a barcode
             if(Item_Barcode !== "") {
                 const item = new Item({item_id:Item_ID,item_name:Item_Name,item_type:Item_Type,item_availability:Item_Availability,item_cost:Item_Cost,item_description:Item_Description});
                     item.save().then(() =>{
-                        return res.status(201).json({message:"Item Registered Successfully"}) ;
+                        return res.status(201).json({message:"Item Registered Successfully"}) ; // new item successfully added
                     }).catch((err) => res.status(500).json({error:err})) ;
             }
 
@@ -201,30 +207,33 @@ router.post('/post/new_item',(req,res)=>{
             else {
                 const item = new Item({item_id:Item_ID,item_name:Item_Name,item_type:Item_Type,item_availability:Item_Availability,item_cost:Item_Cost,item_description:Item_Description});
                     item.save().then(() =>{
-                        return res.status(201).json({message:"Item Registered Successfully"}) ;
+                        return res.status(201).json({message:"Item Registered Successfully"}) ; // new item successfully added
                     }).catch((err) => res.status(500).json({error:err})) ;
             }
         }).catch(err=>{console.log(err);});
     }
 });
 
-// create a route to load the products and also creating a new cart if it does not exist 
+// loads all the products available 
 router.get("/home",async(req,res) => {
-    const items = await Item.find();
-    const itemJson = items.map(item => item.toJSON());
+    const items = await Item.find(); // listing all the items present in the table
+    const itemJson = items.map(item => item.toJSON()); // mapping all the items in a json format
     return res.json(itemJson);
 })
 
-// clear items from the cart 
+// clear items from the cart with token verification
 router.get('/get/clear_cart',verifyToken,(req,res)=>{
     req.session.cart = [] ;
     res.redirect("/home");
 })
 
-// add items to the cart
+//view the cart 
+router.get('/post/view_cart',verifyToken,(req,res)=>{
+    res.send(JSON.parse(JSON.stringify(req.session.cart))) ;        
+})  
+
+// add items to the cart with token verification
 router.post('/post/add_cart',verifyToken,async(req,res)=>{
-    
-    //console.log(`this is my cookie :${req.cookies.jwtoken}`) ;
 
     // creating a new cart if not exist
     if(!req.session.cart){
@@ -233,16 +242,15 @@ router.post('/post/add_cart',verifyToken,async(req,res)=>{
 
     // fetching the details of items for the database
     const item_id = (req.body.item_id).toLowerCase() ;
-
     let item_name
     let item_cost 
     
     // validiating the item_id passed
     const item = await Item.findOne({item_id:item_id});
     if(item){
-        item_name = item.item_name ;
-        item_cost = item.item_cost ;
-        item_type = item.item_type ;
+        item_name = item.item_name ; // corrosponding item name to the given id
+        item_cost = item.item_cost ; // corrosponding item cost to the given id
+        item_type = item.item_type ; // corrosponding item type to the given id
         let count = 0 ;
 
         // increasing the quantity of item if present in cart
@@ -266,14 +274,15 @@ router.post('/post/add_cart',verifyToken,async(req,res)=>{
             };
             req.session.cart.push(cart_data);
         }
-        res.redirect("/home") ;
+
+        return res.redirect("/post/view_cart") ;
     }
     else{
-        res.send("Error 402 : Item_Id does not exist in table")
+        return res.status(400).json({error: "Item_Id does not exist in table"}) ;
     }
 })
 
-// remove items from the cart
+// remove items from the cart with token verification
 router.get('/post/remove_item',verifyToken,(req,res)=>{
     const item_id = req.body.item_id ;
 
@@ -285,15 +294,16 @@ router.get('/post/remove_item',verifyToken,(req,res)=>{
             req.session.cart.splice(i,1);
         }
     }
-    res.redirect("/home") ;
+    res.redirect("/post/view_cart") ;
 });
 
-//generate the total bill
+//generate the total bill with token verification
 router.get('/get/total_bill',verifyToken,(req,res)=>{
 
     //checking if the session cart exists or not
     if(req.session.cart){
-        // creatingg a new session for billing
+
+        // creating a new session for billing
         req.session.bill=[]
         let Total_Price = 0 ;
         for(let i = 0 ; i<req.session.cart.length ; i++)
@@ -364,18 +374,16 @@ router.get('/get/total_bill',verifyToken,(req,res)=>{
             Total_Amount : Total_Price 
         }
         req.session.bill.push(total_amount);
-        res.send(JSON.parse(JSON.stringify(req.session.bill))) ;
+        return res.send(JSON.parse(JSON.stringify(req.session.bill))) ;
     }
 
     // if the cart has not been created yet
     else {
-        res.send("Error 401 : No values added to Cart") ;
-        res.redirect("/home") ;
+        return res.status(400).json({error: "No values added to Cart"}) ;
     }
 })
 
-//confirm the bill 
-// change the database 
+//confirm the bill with token verification
 router.get('/get/confirm_order',verifyToken,(req,res)=>{
     // checking if the bill session is made or not
     if(req.session.bill){
@@ -384,33 +392,34 @@ router.get('/get/confirm_order',verifyToken,(req,res)=>{
         let order ;
         for(let i = 0 ; i<req.session.bill.length-1 ; i++){
             let bill_detail = req.session.bill[i];
-
             // updating the values in the orders database
             order = new Order({item_id:bill_detail.Id , item_name:bill_detail.Name , item_type:bill_detail.Type , item_cost:bill_detail.Price , item_tax:bill_detail.Tax , item_quantity:bill_detail.Quantity ,item_total_amt:bill_detail.Total_Price_Item,time_purchase:date_transaction});
         }
 
         order.save().then(() =>{
-            return res.status(201).json({message:"Order Confirmed Successfully"}) ;
+            return res.status(201).json({message:"Order Confirmed Successfully"}) ; // order confirmed
         }).catch((err) =>{return res.status(500).json({error:err})}) ;
         
-        req.session.bill=[]
+        // removing all the elements from cart and from the bill
+        req.session.bill=[] ;
         req.session.cart = [] ;
     }
 
     // if the bill session is not made then redirection to /total_bill
     else{
-        return res.redirect("/get/total_bill")
+        return res.redirect("/get/total_bill") ;
     }
 })
 
 // this is a function for admin to srerch the results via date
-router.post('/admin/search_by_date',async(req,res)=>{
+router.post('/admin/search',async(req,res)=>{
     const selectedDate = new Date(req.body.date_from); // the date from which the user wants the dats
     const no_of_days = req.body.days_after ; // the no of days thereafter user wants the data
     const nextDay = new Date(selectedDate); 
     nextDay.setDate(nextDay.getDate() + no_of_days); 
 
     try {
+        // creating an event specifying the days
         const events = await Order.find({
             time_purchase: {
                 $gte: selectedDate,
@@ -418,11 +427,13 @@ router.post('/admin/search_by_date',async(req,res)=>{
             }
         });
 
+        // creating a session for storing the details
+
         req.session.admin = [] ;
         let total_tax = 0 ;
         let total_product_cost = 0 ;
 
-
+        // computing all the imformation for the given days
         const totalCost = events.reduce((sum, event) => {
             let count = 0 ;
             for(let i =0 ; i<req.session.admin.length ; i++)
@@ -444,11 +455,12 @@ router.post('/admin/search_by_date',async(req,res)=>{
                 };
                 req.session.admin.push(cart_data);
             }
-            const cost = event.item_total_amt ;
-            total_tax += event.item_tax*event.item_quantity ;
-            total_product_cost += event.item_cost*event.item_quantity ;
+            const cost = event.item_total_amt ;                         // computing total cost amount including tax
+            total_tax += event.item_tax*event.item_quantity ;           // computing total taxes to pay
+            total_product_cost += event.item_cost*event.item_quantity ; // computing total cost without tax
             return sum + cost;
         }, 0); 
+
 
         const total_cost ={
             Total_Cost_Items : total_product_cost 
@@ -460,31 +472,26 @@ router.post('/admin/search_by_date',async(req,res)=>{
             Total_Collection : totalCost 
         }
 
-        req.session.admin.push(total_cost);
+        // pushing all the details to the admin session
+        req.session.admin.push(total_cost); 
         req.session.admin.push(total_tax_data);
         req.session.admin.push(total_amount);
-        res.send(JSON.parse(JSON.stringify(req.session.admin))) ;
+        return res.send(JSON.parse(JSON.stringify(req.session.admin))) ; // passing the string with all the details
         
     } catch (error) {
         console.error('Error fetching events :', error);
-        res.status(500).json({ error: 'Date must be of the format YYYY-MM-DD' });
+        return res.status(500).json({ error: 'Date must be of the format YYYY-MM-DD' });
     }
 
 })
 
-
-
-
-//view the cart 
-router.get('/post/view_cart',verifyToken,(req,res)=>{
-    res.send(JSON.parse(JSON.stringify(req.session.cart))) ;        
-})  
 
 //for logging in the user
 router.post("/login", async(req,res)=>{
     // collecting the username and password using restapi
     const user_email = (req.body.user_email).toLowerCase() ;
     const user_pass = req.body.user_pass ;
+    
     let user_db_password ; // refers to password saved in the database
     let user_db_id ; // refers to the id saved in the database
 
@@ -505,13 +512,14 @@ router.post("/login", async(req,res)=>{
         else {
             jwt.sign({ user_db_id },secretKey,{expiresIn:'300s'},async(err1,token)=>{
                 if(err1){
-                    console.log(err1)
+                    console.log(err1) ;
+
                 }else{
                     res.cookie("jwtoken",token,{
                         expires: new Date(Date.now() + 300000),
                         httpOnly:true
                     });
-                    res.json({message : "User Login Successfully"});
+                    return res.json({message : "User Login Successfully"});
                 }
             })
         }
@@ -526,7 +534,7 @@ function verifyToken(req,res,next){
         console.log(verifyUser);
         next() ;
     }else{
-        res.send("Error 2 : Token is not valid")
+        res.status(400).json({error: "Token is not valid"}) ;
     }
 }
 
