@@ -146,7 +146,12 @@ router.get('/get/clear_cart',verifyToken,(req,res)=>{
 
 //view the cart 
 router.get('/post/view_cart',verifyToken,(req,res)=>{
-    res.send(JSON.parse(JSON.stringify(req.session.cart))) ;        
+    if(req.session.cart){
+        return res.send(JSON.parse(JSON.stringify(req.session.cart))) ;
+    }
+    else{
+        return res.status(400).json({error: "Cart is empty"}) ;
+    }         
 })  
 
 // add items to the cart with token verification
