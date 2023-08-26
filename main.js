@@ -4,7 +4,6 @@ const mysql = require("mysql");
 const dotenv = require("dotenv");
 const app = express();
 
-
 // for taking values front frontend js
 const body_parser = require('body-parser');
 
@@ -47,14 +46,15 @@ schema
 .has().digits(1)                                // Must have at least 1 digits
 .is().not().oneOf(['Passw0rd', 'Password123']);
 
-// establishing a conenction with mysql
-
 dotenv.config({path:'./config.env'});
+
+// establishing a conenction with mysql
+//-->dont access the pssword directly 
 
 const con = mysql.createConnection({
     host:'localhost',
     user:'root',
-    password :process.env.MYSQLPASSWORD,
+    password : process.env.MYSQLPASSWORD,
     database : "plotly_task"
 })
 
@@ -183,8 +183,7 @@ app.get('/get/total_bill',verifyToken,(req,res)=>{
 
     // if the cart has not been created yet
     else {
-        res.send("Error 401 : No values added to Cart") ;
-        res.redirect("/home") ;
+        res.status(400).json({error: "No values added to Carte"}) ;
     }
 })
 
@@ -205,7 +204,7 @@ app.get('/get/confirm_order',verifyToken,(req,res)=>{
                 if(err){
                     console.log(err);
                 }else {
-                    res.send("Success!! Bill Confirmed");
+                    res.json({message : "Success!! Bill Confirmed"});
                 }
             })       
         }
@@ -274,7 +273,7 @@ app.post('/post/add_cart',verifyToken,(req,res)=>{
 
             // if in case the item_id does not match with the values present in table 
             else{
-                res.send("Error 402 : Item_Id does not exist in table")
+                res.status(400).json({error: "Item_Id does not exist in table"}) ;
             }
         }
     })
@@ -305,8 +304,8 @@ app.get('/post/view_cart',verifyToken,(req,res)=>{
 
 //adding of users to the database 
 app.post('/post/add_user',(req,res)=>{
+    
     //calling out the parameters from the post reqenst from postman
-
     const User_ID = (req.body.User_ID).toLowerCase()
     const User_Name = (req.body.User_Name).toLowerCase()
     const User_Password = req.body.User_Password
@@ -315,23 +314,23 @@ app.post('/post/add_user',(req,res)=>{
 
     // check if user id is not null
     if (User_ID === ""){
-        res.send("Error 501 : User Id cannot be null")
+        res.status(400).json({error: "User Id cannot be null"}) ;
     }
     //check is the user name is not null
     else if (User_Name === ""){
-        res.send("Error 502 : User Name cannot be null")
+        res.status(400).json({error: "User Name cannot be null"}) ;
     }
     //check is the password is not null
     else if (User_Password === ""){
-        res.send("Error 503 : User Password cannot be null")
+        res.status(400).json({error: "User Password cannot be null"}) ;
     }
     //check is the mobile number is not null
     else if (User_Mobile_Number === ""){
-        res.send("Error 504 : User Mobile Number cannot be null")
+        res.status(400).json({error: "User Mobile Number cannot be null"}) ;
     }
     //check is the user email is not null
     else if (User_Email === ""){
-        res.send("Error 505 : User User Email cannot be null")
+        res.status(400).json({error: "User Email cannot be null"}) ;
     }
 
     //checking if user_id and email_id are unique
@@ -348,10 +347,10 @@ app.post('/post/add_user',(req,res)=>{
                         console.log(err)
                     }
                     else if(result.length >=1){
-                        res.send("Error 511 : User-Id already exists")
+                        res.status(400).json({error: "User-Id already exists"}) ;
                     }
                     else{
-                        res.send("Error 512 : Email Address already exists")
+                        res.status(400).json({error: "Email Address already exists"}) ;
                     }
                 })
             }
@@ -373,50 +372,50 @@ app.post('/post/add_user',(req,res)=>{
 
                                 // After the encryption the values are added
                                 con.query('insert into user_details values(?,?,?,?,?)',[User_ID,User_Name,hash,User_Mobile_Number,User_Email],(err,result)=>{
-                                    if(err)
-                                    {
-                                        console.log(err)
+                                    if(err){
+                                        console.log(err);
                                     }else {
-                                        res.send("User Updated") ;
+                                        res.json({message : "User Updated"});
                                     }
                                 })
                             })
                         })
                     }
                     else {
-                        res.send("Password must be between 8-100 long , it must have a lower case , a upper case and a digit  ")
+                        res.status(400).json({error: "Password must be between 8-100 long , it must have a lower case , a upper case and a digit"}) ;
                     }
                 }
                 else{
-                    res.send("Mobile Number should be in the format +919926xxxxxx")
+                    res.status(400).json({error: "Mobile Number should be in the format +919926xxxxxx"}) ;
                 }
             }
         })
     }
 })
 
-
+//logging in users and creating tokens for validation
 app.post("/login", async(req,res)=>{
     const user_email = (req.body.user_email).toLowerCase() ;
-    const user_pass = req.body.user_pass ;
-    
+    const user_pass = req.body.user_pass ; 
     con.query('select * from user_details where User_Email=?',user_email,async(err,result)=>{
         if(err)
         {
             console.log(err)
         }
         else{
+            //checking if user in database
             if(result.length==1){
                 const user_database_pass = result[0].User_Password ;
                 const user_name = result[0].User_ID ; 
                 const isMatch = await bcrypt.compare(user_pass,user_database_pass);
-            
+        
                 if(!isMatch) {
                     res.status(400).json({error: "Invalid Password"}) ;
                 }else {
+                    // creation of token 
                     jwt.sign({ user_name },process.env.SECRETKEY,{expiresIn:'100s'},async(err1,token)=>{
                         if(err1){
-                            console.log(err1)
+                            console.log(err1) ;
                         }else{
                             res.cookie("jwtoken",token,{
                                 expires: new Date(Date.now() + 100000),
@@ -433,6 +432,7 @@ app.post("/login", async(req,res)=>{
     })
 })
 
+// function to verify the token 
 function verifyToken(req,res,next){
     const token = req.cookies.jwtoken ;
     if(typeof token !== "undefined"){
@@ -440,15 +440,14 @@ function verifyToken(req,res,next){
         console.log(verifyUser);
         next() ;
     }else{
-        res.send("Error 2 : Token is not valid")
+        res.status(400).json({error: "Token is not valid"}) ;
     }
 }
 
-app.listen(PORT,(err)=>{
-    if(err)
-    {
+app.listen(3000,(err)=>{
+    if(err){
         console.log(err)
     }else {
-        console.log(`on port ${PORT}`)
+        console.log(`on port 3000`)
     }
 })
