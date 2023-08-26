@@ -123,7 +123,7 @@ router.post('/post/add_user',async(req,res)=>{
                     //saving of user data 
                     const user = new User({user_id:User_ID,user_name:User_Name,user_password:hash,mobile_number:User_Mobile_Number,user_email:User_Email});
                         user.save().then(() =>{
-                            res.status(201).json({message:"User Registered Successfully"}) ; // registed successfully
+                            return res.status(201).json({message:"User Registered Successfully"}) ; // registed successfully
                         }).catch((err) => res.status(500).json({error:err})) ;
                 });
             });
@@ -141,7 +141,7 @@ router.get("/home",async(req,res) => {
 // clear items from the cart with token verification
 router.get('/get/clear_cart',verifyToken,(req,res)=>{
     req.session.cart = [] ;
-    res.redirect("/home");
+    return res.redirect("/home");
 })
 
 //view the cart 
@@ -216,7 +216,7 @@ router.get('/post/remove_item',verifyToken,(req,res)=>{
             req.session.cart.splice(i,1);
         }
     }
-    res.redirect("/post/view_cart") ;
+    return res.redirect("/post/view_cart") ;
 });
 
 //generate the total bill with token verification
@@ -369,7 +369,9 @@ router.post("/login", async(req,res)=>{
                     return res.json({message : "User Login Successfully"});
                 }
             })
-        }
+        }    
+    }else {
+        return res.json({message : "User Email not Registered"});
     }
 })
 
