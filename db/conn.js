@@ -1,3 +1,4 @@
+//establishing a connection with mongoose database
 const mongoose = require('mongoose');
 const DB = process.env.DATABASE;
 

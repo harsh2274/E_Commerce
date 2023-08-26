@@ -27,8 +27,9 @@ app.use(require('./router/auth'));
 
 const User = require('./model/userSchema');
 const Item = require('./model/itemSchema');
-const Order = require("../model/ordersSchema");
-const PORT = process.env.PORT;
+const Order = require("./model/ordersSchema");
+
+const PORT = process.env.PORTUSER;
 
 
 app.listen(PORT,(err)=>{
