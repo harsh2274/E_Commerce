@@ -4,6 +4,7 @@ const mongoose = require('mongoose');
 const dotenv = require("dotenv");
 const app = express();
 
+
 // configuring the path for cofig.env for string 
 dotenv.config({path:'./config.env'}) ;
 require('./db/conn');
@@ -11,11 +12,16 @@ app.use(express.json());
 
 // importing cookies library
 const cookieParser = require("cookie-parser");
-router.use(cookieParser()) ;
+app.use(cookieParser()) ;
 
+// for creation of authentication 
+const jwt = require("jsonwebtoken");
+
+// creation of session keys 
+const session = require('express-session');
 
 //Set up of Session Middleware
-router.use(session({
+app.use(session({
     secret : process.env.SESSIONSECRET ,
     resave : false,
     saveUninitialized : true ,
@@ -23,8 +29,16 @@ router.use(session({
 })) 
 
 const Admin = require("./model/adminSchema");
+//importing item schema
+const Item = require("./model/itemSchema");
+//importing order schema
+const Order = require("./model/ordersSchema");
 
 const PORT = process.env.PORTADMIN;
+
+//calling encryption for passwords
+const bcrypt = require("bcrypt")
+
 
 //adding of items 
 app.post('/admin/new_item',verifyToken,(req,res)=>{
@@ -192,7 +206,7 @@ app.post("/admin/login" , async(req,res)=>{
     let admin_db_id ; // refers to the id saved in the database
 
     // checking if the email id is correct
-    const admin = await User.findOne({admin_email:admin_email});
+    const admin = await Admin.findOne({admin_email:admin_email});
     if(admin){
         //getting the passwords
         admin_db_password = admin.admin_password ;
@@ -206,7 +220,7 @@ app.post("/admin/login" , async(req,res)=>{
 
         // creating a token for access of the application , time limit 5min
         else {
-            jwt.sign({ admin_db_id },secretKey,{expiresIn:'300s'},async(err1,token)=>{
+            jwt.sign({ admin_db_id },process.env.SECRETKEY,{expiresIn:'300s'},async(err1,token)=>{
                 if(err1){
                     console.log(err1) ;
 
@@ -226,8 +240,7 @@ app.post("/admin/login" , async(req,res)=>{
 function verifyToken(req,res,next){
     const token = req.cookies.jwtoken ;
     if(typeof token !== "undefined"){
-        const verifyUser = jwt.verify(token,secretKey) ;
-        console.log(verifyUser);
+        const verifyUser = jwt.verify(token,process.env.SECRETKEY) ;
         next() ;
     }else{
         res.status(400).json({error: "Token is not valid"}) ;

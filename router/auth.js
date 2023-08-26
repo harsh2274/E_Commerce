@@ -373,7 +373,6 @@ function verifyToken(req,res,next){
     const token = req.cookies.jwtoken ;
     if(typeof token !== "undefined"){
         const verifyUser = jwt.verify(token,secretKey) ;
-        console.log(verifyUser);
         next() ;
     }else{
         res.status(400).json({error: "Token is not valid"}) ;
