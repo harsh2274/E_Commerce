@@ -1,5 +1,4 @@
-# Plotline Internship Task
-Backend Assignment | Plotline
+# E-Commerce
 
 ## About the Backend
 
